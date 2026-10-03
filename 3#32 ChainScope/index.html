@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChainScope Intelligence</title>
+    <style>
+        :root {
+            --bg-base: #0B0E14;
+            --bg-panel: #131822;
+            --bg-card: #1C2333;
+            --border-color: #2A3447;
+            --border-focus: #38BDF8;
+            --text-primary: #E2E8F0;
+            --text-muted: #94A3B8;
+            --text-mono: #CBD5E1;
+            --color-blue: #38BDF8;
+            --color-green: #10B981;
+            --color-amber: #F59E0B;
+            --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: var(--bg-base); color: var(--text-primary); font-size: 13px; line-height: 1.4; min-height: 100vh; overflow-x: hidden; }
+
+        /* Navigation Bar - 核心修改：固定在顶部不随滚屏移动 */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .nav-brand {
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-primary);
+            cursor: pointer;
+            letter-spacing: 0.5px;
+        }
+        .nav-brand svg { width: 18px; height: 18px; fill: var(--color-blue); }
+        .nav-stats { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+
+        /* SEARCH HERO STAGE */
+        #search-stage {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 50px);
+            padding: 20px;
+        }
+        .search-container {
+            width: 100%;
+            max-width: 720px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            transition: border-color 0.2s;
+        }
+        .search-container:focus-within { border-color: var(--border-focus); }
+        .search-input {
+            flex: 1; background: transparent; border: none; outline: none;
+            color: var(--text-primary); font-size: 15px; font-family: var(--font-mono);
+            caret-color: var(--color-blue);
+        }
+        .search-input::placeholder { color: #475569; font-family: -apple-system, sans-serif; font-size: 14px; }
+        .search-btn {
+            background: #1E293B; border: 1px solid var(--border-color); color: var(--text-primary);
+            padding: 8px 16px; border-radius: 4px; font-size: 12px; font-weight: 500; cursor: pointer;
+        }
+        .search-btn:hover { background: #2A3447; border-color: var(--text-muted); }
+
+        /* LOADING STAGE */
+        #loading-stage {
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            min-height: calc(100vh - 50px); color: var(--text-muted); font-family: var(--font-mono); font-size: 12px;
+        }
+        .loader-bar { width: 240px; height: 2px; background: var(--border-color); margin-top: 16px; position: relative; overflow: hidden; }
+        .loader-progress { position: absolute; left: -100%; width: 100%; height: 100%; background: var(--color-blue); animation: loading 0.8s infinite linear; }
+        @keyframes loading { 0% { left: -100%; } 100% { left: 100%; } }
+
+        /* DASHBOARD STAGE */
+        #dashboard-stage {
+            display: none;
+            width: 100%;
+            padding: 28px 48px 48px 48px;
+            flex-direction: column;
+            gap: 24px;
+        }
+        .header-panel { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; }
+        .tx-title { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+        .tx-hash { font-family: var(--font-mono); color: var(--text-muted); font-size: 15px; }
+
+        .panel { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden; }
+        .panel-header { background: rgba(255,255,255,0.015); padding: 14px 20px; border-bottom: 1px solid var(--border-color); font-weight: 600; font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th, .data-table td { padding: 14px 20px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .data-table tr:last-child th, .data-table tr:last-child td { border-bottom: none; }
+        .data-table th { width: 20%; color: var(--text-muted); font-weight: 500; font-size: 13px; }
+
+        .mono { font-family: var(--font-mono); color: var(--text-mono); }
+        .link { font-family: var(--font-mono); color: var(--color-blue); text-decoration: none; }
+        .link:hover { text-decoration: underline; }
+
+        .tag { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-family: var(--font-mono); background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-muted); margin-left: 8px; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+        /* REALISTIC FLOW TOPOLOGY CANVAS */
+        .topology-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #090C10;
+            background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 0);
+            background-size: 20px 20px;
+            height: 420px;
+            padding: 20px;
+            width: 100%;
+        }
+        
+        .topology-wrapper {
+            position: relative;
+            width: 1060px;
+            height: 320px;
+        }
+
+        .topology-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        
+        .node-card {
+            position: absolute;
+            width: 220px;
+            height: 64px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .node-type { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
+        .node-val { font-family: var(--font-mono); font-size: 13px; color: var(--text-primary); }
+        .node-sub { font-size: 11px; color: var(--text-muted); margin-top: 5px; display: flex; justify-content: space-between; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="nav-brand" id="reset-btn">
+            <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            ChainScope Intelligence Engine
+        </div>
+        <div class="nav-stats">
+            STATUS: SYNCED | BLOCK: 19,345,211 | NETWORK: MAINNET
+        </div>
+    </nav>
+
+    <!-- STEP 1: SEARCH STAGE -->
+    <div id="search-stage">
+        <div class="search-container">
+            <span style="color: #475569; font-size: 16px;">🔍</span>
+            <input type="text" id="target-input" class="search-input" placeholder="Search by Txn Hash / Address / Block" autofocus autocomplete="off" spellcheck="false">
+            <button class="search-btn" id="run-btn">Search</button>
+        </div>
+    </div>
+
+    <!-- STEP 2: LOADING STAGE -->
+    <div id="loading-stage">
+        <div>INDEXING TRANSACTION GRAPH...</div>
+        <div class="loader-bar"><div class="loader-progress"></div></div>
+    </div>
+
+    <!-- STEP 3: FORENSIC DASHBOARD -->
+    <div id="dashboard-stage">
+        <div class="header-panel">
+            <div>
+                <div class="tx-title">Transaction Details</div>
+                <div class="tx-hash">0x12D3F9aBc456D7e8F9012345C6789A0BcDef3F99</div>
+            </div>
+            <div style="text-align: right;">
+                <span style="color: var(--color-green); font-family: var(--font-mono); font-size: 12px;">● Confirmed</span>
+                <div style="color: var(--text-muted); font-size: 12px; margin-top: 6px;">Today, 20:41:12 UTC</div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">Execution Overview</div>
+            <table class="data-table">
+                <tr>
+                    <th>From:</th>
+                    <td>
+                        <span class="link">0x7a3Bf9c5d2A4e6D8b1C9f41a0E3b5c7D9f41002a</span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Interacted With (To):</th>
+                    <td>
+                        <span class="link">0x8f3ab942a781b4c9e3d2f1a6c4b8e9d0a1f3c5b7</span>
+                        <span class="tag" style="color: var(--color-amber); border-color: rgba(245,158,11,0.3);">Tornado.Cash: Router</span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Tokens Transferred:</th>
+                    <td>
+                        <span class="mono">3000.00 USDT</span> 
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="grid-2">
+            <div class="panel">
+                <div class="panel-header">Network Parameters</div>
+                <table class="data-table">
+                    <tr>
+                        <th>Block Height:</th>
+                        <td class="mono">19345211</td>
+                    </tr>
+                    <tr>
+                        <th>Transaction Fee:</th>
+                        <td class="mono">0.00345 ETH</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">Compliance Risk</div>
+                <table class="data-table">
+                    <tr>
+                        <th>Direct Counterparty:</th>
+                        <td><span style="color: var(--color-amber);" class="mono">High Risk (Mixer)</span></td>
+                    </tr>
+                    <tr>
+                        <th>Tracing Status:</th>
+                        <td><span style="color: var(--text-muted);" class="mono">Obscured by Zero-Knowledge Proof</span></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">Flow Topology Diagram (Directed Graph)</div>
+            <div class="topology-container">
+                <div class="topology-wrapper">
+                    <svg class="topology-svg" width="1060" height="320" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                <path d="M 0 0 L 10 5 L 0 10 z" fill="#38BDF8" />
+                            </marker>
+                            <marker id="arrow-gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569" />
+                            </marker>
+                        </defs>
+
+                        <path d="M 240 160 L 412 160" stroke="#38BDF8" stroke-width="2" marker-end="url(#arrow)" />
+                        <text x="326" y="150" fill="#38BDF8" font-size="10" font-family="monospace" text-anchor="middle">3000 USDT</text>
+
+                        <path d="M 640 160 C 720 160, 720 60, 832 60" stroke="#475569" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#arrow-gray)" fill="none"/>
+                        <path d="M 640 160 L 832 160" stroke="#475569" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#arrow-gray)" />
+                        <path d="M 640 160 C 720 160, 720 260, 832 260" stroke="#475569" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#arrow-gray)" fill="none"/>
+                    </svg>
+
+                    <div class="node-card" style="left: 20px; top: 128px;">
+                        <div class="node-type">Origin Address</div>
+                        <div class="node-val">0x7a3B...002a</div>
+                        <div class="node-sub"><span>EOA Wallet</span></div>
+                    </div>
+
+                    <div class="node-card" style="left: 420px; top: 128px; border-color: var(--color-amber);">
+                        <div class="node-type" style="color: var(--color-amber);">Smart Contract</div>
+                        <div class="node-val">0x8f3a...5b7</div>
+                        <div class="node-sub"><span>Tornado.Cash Pool</span></div>
+                    </div>
+
+                    <div class="node-card" style="left: 840px; top: 28px; border-color: rgba(16, 185, 129, 0.4);">
+                        <div class="node-type">Recipient (Payout)</div>
+                        <div class="node-val" style="color: var(--color-green);">TRj9k...2vM4</div>
+                        <div class="node-sub"><span>+3000 USDT</span></div>
+                    </div>
+
+                    <div class="node-card" style="left: 840px; top: 128px;">
+                        <div class="node-type">Unlinked Output</div>
+                        <div class="node-val">0x4d18...8e92</div>
+                        <div class="node-sub"><span>Pool Liquidity</span></div>
+                    </div>
+
+                    <div class="node-card" style="left: 840px; top: 228px;">
+                        <div class="node-type">Unlinked Output</div>
+                        <div class="node-val">0x8b32...12c9</div>
+                        <div class="node-sub"><span>Pool Liquidity</span></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const TARGET = "0x12D3F9aBc456D7e8F9012345C6789A0BcDef3F99";
+        let index = 0;
+        let isRunning = false;
+
+        const input = document.getElementById('target-input');
+        const searchStage = document.getElementById('search-stage');
+        const loadingStage = document.getElementById('loading-stage');
+        const dashStage = document.getElementById('dashboard-stage');
+        const runBtn = document.getElementById('run-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { resetAll(); return; }
+            if (isRunning) return;
+            if (e.key === 'Enter') { e.preventDefault(); execute(); return; }
+
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            if (['Backspace', 'Delete'].includes(e.key)) {
+                if (index > 0) index--;
+                input.value = TARGET.substring(0, index);
+                return;
+            }
+
+            if (e.key.length === 1) {
+                e.preventDefault(); 
+                if (index < TARGET.length) {
+                    index++;
+                    input.value = TARGET.substring(0, index);
+                }
+            }
+        });
+
+        runBtn.addEventListener('click', execute);
+        resetBtn.addEventListener('click', resetAll);
+
+        function execute() {
+            if (isRunning || index === 0) return;
+            isRunning = true;
+            input.value = TARGET; 
+
+            searchStage.style.display = 'none';
+            loadingStage.style.display = 'flex';
+
+            setTimeout(() => {
+                loadingStage.style.display = 'none';
+                dashStage.style.display = 'flex';
+            }, 800);
+        }
+
+        function resetAll() {
+            isRunning = false;
+            index = 0;
+            input.value = '';
+            
+            dashStage.style.display = 'none';
+            loadingStage.style.display = 'none';
+            searchStage.style.display = 'flex';
+            input.focus();
+        }
+    </script>
+</body>
+</html>
